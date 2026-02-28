@@ -12,32 +12,64 @@ def get_bcv_rates():
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
+        
         response = requests.get(url, headers=headers, verify=False, timeout=10)
         response.raise_for_status()
         
         soup = BeautifulSoup(response.text, 'html.parser')
-        
+        # Fecha de actualizacion
+        fecha_container = soup.find('div', class_='pull-right dinpro center')
+        fecha_actualizacion = "No disponible"
+        if fecha_container and fecha_container.find('span'):
+            fecha_actualizacion = fecha_container.find('span')['content'] # Ejemplo: 2026-03-02T00:00:00-04:00
+            
         # El BCV tiene contenedores específicos para cada moneda
+        # Función auxiliar para formatear la tasa a float
+        def parse_rate(rate_str):
+            try:
+                # El BCV usa comas para los decimales
+                return float(rate_str.replace('.', '').replace(',', '.'))
+            except:
+                return 0.0
+
         # Para el dólar:
         dolar_div = soup.find('div', id='dolar')
-        dollar_price = "No encontrado"
+        dollar_price = 0.0
         if dolar_div:
-            dollar_price = dolar_div.find('strong').text.strip()
+            dollar_price = parse_rate(dolar_div.find('strong').text.strip())
             
         # Para el euro:
         euro_div = soup.find('div', id='euro')
-        euro_price = "No encontrado"
+        euro_price = 0.0
         if euro_div:
-            euro_price = euro_div.find('strong').text.strip()
+            euro_price = parse_rate(euro_div.find('strong').text.strip())
             
-        return {'USD': dollar_price, 'EUR': euro_price}
+        # Construir la respuesta con el esquema requerido
+        return [
+            {
+                "fuente": "BCV",
+                "nombre": "Dólar",
+                "compra": dollar_price,
+                "venta": dollar_price,
+                "promedio": dollar_price,
+                "fechaActualizacion": fecha_actualizacion
+            },
+            {
+                "fuente": "BCV",
+                "nombre": "Euro",
+                "compra": euro_price,
+                "venta": euro_price,
+                "promedio": euro_price,
+                "fechaActualizacion": fecha_actualizacion
+            }
+        ]
         
     except Exception as e:
         print(f"Error al obtener los datos: {e}")
         return None
 
 if __name__ == "__main__":
+    import json
     rates = get_bcv_rates()
     if rates:
-        print(f"Dolar (USD): {rates['USD']} Bs.")
-        print(f"Euro (EUR): {rates['EUR']} Bs.")
+        print(json.dumps(rates, indent=2, ensure_ascii=False))
