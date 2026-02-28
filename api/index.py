@@ -17,7 +17,7 @@ app = FastAPI(
 @app.get("/")
 def root():
     return {
-        "message": "Bienvenido a la API del BCV (No oficial)",
+        "message": "Bienvenido a la API del BCV",
         "endpoints": {
             "rates": "/api/rates"
         },

@@ -1,79 +1,142 @@
-# Banco Central de Venezuela (BCV) Scraper & API
+# Banco Central de Venezuela (BCV) API
 
-Este repositorio contiene un servicio en Python para extraer en tiempo real las tasas de cambio oficiales del Dólar (USD) y Euro (EUR) publicadas por el Banco Central de Venezuela. El proyecto puede ejecutarse como un script local o desplegarse como una API RESTfulServerless a través de Vercel.
+Una API Serverless rápida, confiable y de código abierto para obtener el tipo de cambio oficial del Banco Central de Venezuela (BCV), proporcionando las tasas oficiales para el Dólar (USD) y el Euro (EUR).
 
-## Funcionalidades Principales
+---
 
-- Obtención del precio oficial mediante web scraping directo a la plataforma del BCV.
-- Resolución de problemas asociados a certificados SSL vencidos o inválidos en la fuente original.
-- Implementación de User-Agent gestionado para evitar bloqueos por parte del servidor.
-- Estructura preparada para despliegue serverless mediante FastAPI y Vercel.
+## 📌 Tabla de Contenidos
 
-## Requisitos del Sistema
+- [Características](#características)
+- [Uso Comercial y Formato de Respuesta](#uso-comercial-y-formato-de-respuesta)
+- [Documentación de la API (Endpoints)](#documentación-de-la-api-endpoints)
+- [Instalación y Despliegue Local](#instalación-y-despliegue-local)
+- [Despliegue en Vercel (Serverless)](#despliegue-en-vercel-serverless)
+- [Consideraciones Técnicas](#consideraciones-técnicas)
 
-- Python 3.7 o superior
-- Conexión estable a Internet
-- Dependencias indicadas en el archivo requirements.txt
+---
 
-## Uso y Ejecución Local
+## Características
 
-Para ejecutar el servicio localmente, siga los siguientes pasos:
+- Web scraping directo a la fuente oficial (`www.bcv.org.ve`) en tiempo real.
+- Bypass estructurado para incidencias de certificados SSL/TLS inherentes a los portales gubernamentales.
+- Formato de respuesta JSON optimizado en un esquema Array-Object para facilitar la iteración desde el Frontend.
+- Construido con **FastAPI**, listo para despliegues Serverless mediante Vercel (AWS Lambda).
 
-1. Clonar el repositorio:
+---
+
+## Uso Comercial y Formato de Respuesta
+
+La API retorna un modelo de datos estructurado ideal para integraciones financieras, comercio electrónico y facturación en Venezuela. Se devuelve un arreglo `[]` con objetos por cada divisa, consolidando y replicando el **Precio Oficial de las Mesas de Cambio** para los valores de `compra`, `venta` y `promedio`.
+
+El formato exacto es el siguiente:
+
+```json
+[
+  {
+    "fuente": "BCV",
+    "nombre": "Dólar",
+    "compra": 419.9873,
+    "venta": 419.9873,
+    "promedio": 419.9873,
+    "fechaActualizacion": "2026-03-02T00:00:00-04:00"
+  },
+  {
+    "fuente": "BCV",
+    "nombre": "Euro",
+    "compra": 495.60601336,
+    "venta": 495.60601336,
+    "promedio": 495.60601336,
+    "fechaActualizacion": "2026-03-02T00:00:00-04:00"
+  }
+]
+```
+
+---
+
+## Documentación de la API (Endpoints)
+
+Una vez que el proyecto esté en ejecución (ya sea en un entorno local o alojado en Vercel), la API expone los siguientes puntos de acceso:
+
+### `GET /`
+
+- **Descripción**: Endpoint de verificación de salud (healthcheck). Retorna la versión y rutas disponibles.
+- **Respuesta Exitosa (200 OK)**:
+
+  ```json
+  {
+    "message": "Bienvenido a la API del BCV",
+    "endpoints": {
+      "rates": "/api/rates"
+    },
+    ...
+  }
+  ```
+
+### `GET /api/rates`
+
+- **Descripción**: Extrae y retorna el tipo de cambio oficial al momento exacto de la petición.
+- **Códigos de estado**:
+  - `200 OK`: La extracción fue exitosa. Devuelve un objeto con la llave `success: true` y el arreglo de `rates` descrito en la sección anterior.
+  - `500 Internal Server Error`: Ocurrió un fallo en el scraper al intentar leer el portal del BCV (usualmente asociado a la caída general de la página fuente).
+
+---
+
+## Instalación y Despliegue Local
+
+Para modificar o probar la API en un entorno cerrado:
+
+1. **Clonar el repositorio**:
 
    ```bash
-   git clone <LA_URL_DE_SU_REPOSITORIO>
+   git clone https://github.com/JorgeEscalonas/scraping-bcv.git
    cd scraping-bcv
    ```
 
-2. Configurar el entorno virtual (Recomendado):
+2. **Entorno Virtual** (Extremadamente recomendado):
 
    ```bash
    python -m venv venv
-   
-   # Activación en Windows:
+   # En Windows:
    .\venv\Scripts\activate
-   
-   # Activación en macOS/Linux:
+   # En macOS / Linux:
    source venv/bin/activate
    ```
 
-3. Instalar las dependencias requeridas:
+3. **Instalación de dependencias**:
 
    ```bash
    pip install -r requirements.txt
    ```
 
-4. Ejecutar el script base:
+4. **Ejecutar el Scraper de prueba en Terminal**:
 
    ```bash
    python bcv_scraper.py
    ```
 
-## Despliegue como API en Vercel
+5. **Levantar el Servidor FastAPI Local**:
 
-El proyecto está configurado para operar como una API utilizando FastAPI. Para su publicación en Vercel:
+   ```bash
+   uvicorn api.index:app --reload
+   ```
 
-1. Inicie sesión en Vercel y seleccione la opción para añadir un nuevo proyecto desde GitHub.
-2. Seleccione este repositorio de la lista.
-3. No es necesario modificar ninguna configuración adicional (Build Command o Output Directory). El archivo `vercel.json` y la carpeta `api/` manejarán el enrutamiento.
-4. Presione "Deploy".
+   *El servidor estará disponible en `http://127.0.0.1:8000`*
 
-Una vez desplegada, la API ofrecerá los siguientes puntos de acceso (endpoints):
+---
 
-- Ruta base `GET /`: Retorna información general sobre la API y su estado.
-- Datos de divisas `GET /api/rates`: Retorna un objeto JSON con las tasas de cambio actuales de la siguiente forma:
+## Despliegue en Vercel (Serverless)
 
-  ```json
-  {
-    "success": true,
-    "rates": {
-      "USD": "valor",
-      "EUR": "valor"
-    }
-  }
-  ```
+Este repositorio está preparado nativamente para su despliegue en Vercel, aprovechando su entorno optimizado de Python Serverless.
+
+1. Registre una cuenta o inicie sesión en [Vercel](https://vercel.com).
+2. Agregue un nuevo **Proyecto** e importe este repositorio desde su cuenta de GitHub.
+3. El archivo `vercel.json` autoconfigurará las rutas y los build-flags. **No modifique ningún parámetro de Build & Development Settings**.
+4. Presione **Deploy**.
+
+En menos de dos minutos, su API estará disponible globalmente en una URL segura HTTPS proporcionada por Vercel.
+
+---
 
 ## Consideraciones Técnicas
 
-El script desactiva de forma explícita las advertencias de tipo `InsecureRequestWarning` generadas por la librería `urllib3`. Esta medida es necesaria debido a que la infraestructura web oficial del BCV frecuentemente presenta inconsistencias en sus certificados de seguridad, lo que provocaría interrupciones en el flujo de ejecución estándar si no fuera mitigado.
+**Resolución de SSL**: El modelo base (`bcv_scraper.py`) invoca explícitamente `urllib3.disable_warnings`. Esta arquitectura no es un descuido de seguridad, sino una necesidad intrínseca dadas las intermitencias y firmas no verificadas de los hostings gubernamentales del BCV que forzarían la terminación de `requests` con la excepción `SSLError`.
