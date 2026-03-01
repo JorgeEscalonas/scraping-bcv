@@ -5,7 +5,20 @@ import urllib3
 # Desactivar advertencias de SSL ya que la web del BCV a veces tiene problemas de certificado
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-def get_bcv_rates():
+import time
+
+# Opciones de caché (1 hora por defecto)
+CACHE_TTL = 3600
+_rates_cache = None
+_cache_timestamp = 0
+
+def get_bcv_rates(force_refresh=False):
+    global _rates_cache, _cache_timestamp
+    
+    # Validar si el caché aún es válido
+    if not force_refresh and _rates_cache and (time.time() - _cache_timestamp < CACHE_TTL):
+        return _rates_cache
+
     url = "https://www.bcv.org.ve/"
     try:
         # Se necesita un User-Agent para que el servidor no rechace la petición (algunos anti-scraping bloquean peticiones sin esto)
@@ -16,7 +29,13 @@ def get_bcv_rates():
         response = requests.get(url, headers=headers, verify=False, timeout=10)
         response.raise_for_status()
         
-        soup = BeautifulSoup(response.text, 'html.parser')
+        # lxml es considerablemente más ágil que html.parser si está instalado, útil para Serverless. 
+        # Si no, hace fallback elegante a html.parser
+        try:
+            soup = BeautifulSoup(response.text, 'lxml')
+        except:
+            soup = BeautifulSoup(response.text, 'html.parser')
+
         # Fecha de actualizacion
         fecha_container = soup.find('div', class_='pull-right dinpro center')
         fecha_actualizacion = "No disponible"
@@ -45,7 +64,7 @@ def get_bcv_rates():
             euro_price = parse_rate(euro_div.find('strong').text.strip())
             
         # Construir la respuesta con el esquema requerido
-        return [
+        result = [
             {
                 "fuente": "BCV",
                 "nombre": "Dólar",
@@ -63,6 +82,12 @@ def get_bcv_rates():
                 "fechaActualizacion": fecha_actualizacion
             }
         ]
+        
+        # Guardar en caché
+        _rates_cache = result
+        _cache_timestamp = time.time()
+        
+        return result
         
     except Exception as e:
         print(f"Error al obtener los datos: {e}")
