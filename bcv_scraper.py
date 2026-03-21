@@ -1,18 +1,30 @@
+import time
+import urllib3
 import requests
 from bs4 import BeautifulSoup
-import urllib3
 
 # Desactivar advertencias de SSL ya que la web del BCV a veces tiene problemas de certificado
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-import time
 
 # Opciones de caché (1 hora por defecto)
 CACHE_TTL = 3600
 _rates_cache = None
 _cache_timestamp = 0
 
-def get_bcv_rates(force_refresh=False):
+
+def _parse_rate(rate_str: str) -> float:
+    """Convierte un string de tasa de cambio venezolana a float."""
+    try:
+        if not rate_str:
+            return 0.0
+        # El BCV usa comas para los decimales
+        return float(rate_str.replace('.', '').replace(',', '.'))
+    except ValueError:
+        return 0.0
+
+
+def get_bcv_rates(force_refresh: bool = False):
+    """Obtiene las tasas de cambio desde la página oficial del BCV."""
     global _rates_cache, _cache_timestamp
     
     # Validar si el caché aún es válido
@@ -21,47 +33,42 @@ def get_bcv_rates(force_refresh=False):
 
     url = "https://www.bcv.org.ve/"
     try:
-        # Se necesita un User-Agent para que el servidor no rechace la petición (algunos anti-scraping bloquean peticiones sin esto)
+        # User-Agent necesario para que el servidor no rechace la petición (anti-scraping)
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': (
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                'AppleWebKit/537.36 (KHTML, like Gecko) '
+                'Chrome/120.0.0.0 Safari/537.36'
+            )
         }
         
         response = requests.get(url, headers=headers, verify=False, timeout=10)
         response.raise_for_status()
         
-        # lxml es considerablemente más ágil que html.parser si está instalado, útil para Serverless. 
-        # Si no, hace fallback elegante a html.parser
+        # lxml es más ágil. Si no está instalado, hace fallback a html.parser
         try:
             soup = BeautifulSoup(response.text, 'lxml')
-        except:
+        except Exception:
+            # Fallback seguro a html.parser si lxml falla o no se encuentra
             soup = BeautifulSoup(response.text, 'html.parser')
 
-        # Fecha de actualizacion
+        # Fecha de actualización
         fecha_container = soup.find('div', class_='pull-right dinpro center')
         fecha_actualizacion = "No disponible"
         if fecha_container and fecha_container.find('span'):
-            fecha_actualizacion = fecha_container.find('span')['content'] # Ejemplo: 2026-03-02T00:00:00-04:00
-            
-        # El BCV tiene contenedores específicos para cada moneda
-        # Función auxiliar para formatear la tasa a float
-        def parse_rate(rate_str):
-            try:
-                # El BCV usa comas para los decimales
-                return float(rate_str.replace('.', '').replace(',', '.'))
-            except:
-                return 0.0
+            fecha_actualizacion = fecha_container.find('span').get('content', "No disponible")
 
         # Para el dólar:
         dolar_div = soup.find('div', id='dolar')
         dollar_price = 0.0
-        if dolar_div:
-            dollar_price = parse_rate(dolar_div.find('strong').text.strip())
+        if dolar_div and dolar_div.find('strong'):
+            dollar_price = _parse_rate(dolar_div.find('strong').text.strip())
             
         # Para el euro:
         euro_div = soup.find('div', id='euro')
         euro_price = 0.0
-        if euro_div:
-            euro_price = parse_rate(euro_div.find('strong').text.strip())
+        if euro_div and euro_div.find('strong'):
+            euro_price = _parse_rate(euro_div.find('strong').text.strip())
             
         # Construir la respuesta con el esquema requerido
         result = [
@@ -89,8 +96,11 @@ def get_bcv_rates(force_refresh=False):
         
         return result
         
+    except requests.RequestException as e:
+        print(f"Error HTTP al obtener los datos del BCV: {e}")
+        return None
     except Exception as e:
-        print(f"Error al obtener los datos: {e}")
+        print(f"Error inesperado al procesar los datos: {e}")
         return None
 
 if __name__ == "__main__":

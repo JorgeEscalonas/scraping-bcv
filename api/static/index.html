@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Monitor de tasas de cambio oficiales del Banco Central de Venezuela (BCV) en tiempo real.">
+    <title>BCV Monitor | Tasas de Cambio Oficiales</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+
+<body>
+
+    <!-- Ambient background glows -->
+    <div class="bg-glow bg-glow--top-right" aria-hidden="true"></div>
+    <div class="bg-glow bg-glow--bottom-left" aria-hidden="true"></div>
+
+    <!-- Navigation -->
+    <header>
+        <nav class="nav" role="navigation" aria-label="Navegación principal">
+            <div class="nav__logo">BCV MONITOR</div>
+            <div class="nav__badge" role="status">
+                <span class="nav__badge-dot" aria-hidden="true"></span>
+                EN VIVO
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+
+        <!-- Hero -->
+        <section class="hero" aria-labelledby="hero-title">
+            <h1 class="hero__title" id="hero-title">Tasa Oficial</h1>
+            <p class="hero__subtitle">
+                Tasas de cambio publicadas por el Banco Central de Venezuela,
+                actualizadas en tiempo real.
+            </p>
+        </section>
+
+        <!-- Rate Cards -->
+        <section class="rates-grid" aria-label="Tasas de cambio">
+
+            <article class="rate-card rate-card--usd" aria-label="Tasa del Dólar Americano">
+                <i class="rate-card__icon" aria-hidden="true">$</i>
+                <div class="rate-card__label">Dólar Americano</div>
+                <div class="rate-card__price" id="usd-price">
+                    — <span class="rate-card__price-unit">Bs.</span>
+                </div>
+                <div class="rate-card__source">BCV Oficial</div>
+            </article>
+
+            <article class="rate-card rate-card--eur" aria-label="Tasa del Euro">
+                <i class="rate-card__icon" aria-hidden="true">€</i>
+                <div class="rate-card__label">Euro</div>
+                <div class="rate-card__price" id="eur-price">
+                    — <span class="rate-card__price-unit">Bs.</span>
+                </div>
+                <div class="rate-card__source">BCV Oficial</div>
+            </article>
+
+        </section>
+
+        <!-- Refresh + Timestamp -->
+        <div class="actions">
+            <button class="btn-refresh" id="btn-refresh" aria-label="Actualizar tasas de cambio">
+                <svg class="btn-refresh__icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                    aria-hidden="true">
+                    <path d="M21 2v6h-6" />
+                    <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+                    <path d="M3 22v-6h6" />
+                    <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+                </svg>
+                Actualizar Tasas
+            </button>
+
+            <time class="timestamp" id="timestamp" aria-live="polite">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                </svg>
+                Cargando datos...
+            </time>
+        </div>
+
+        <!-- API Documentation Section -->
+        <section class="api-docs" aria-labelledby="api-docs-title">
+
+            <div class="api-docs__header">
+                <h2 class="api-docs__title" id="api-docs-title">Referencia de la API</h2>
+                <p class="api-docs__desc">Endpoints disponibles. Todos retornan <code
+                        style="background:rgba(255,255,255,0.06);padding:1px 6px;border-radius:5px;font-size:0.9em">application/json</code>.
+                </p>
+            </div>
+
+            <!-- Endpoint Switcher -->
+            <div class="endpoint-switcher" role="tablist" aria-label="Seleccionar endpoint">
+                <button class="ep-btn active" role="tab" aria-selected="true" data-ep="all">
+                    <span class="ep-btn__method">GET</span>/api/rates
+                </button>
+                <button class="ep-btn" role="tab" aria-selected="false" data-ep="dolar">
+                    <span class="ep-btn__method">GET</span>/api/rates/dolar
+                </button>
+                <button class="ep-btn" role="tab" aria-selected="false" data-ep="euro">
+                    <span class="ep-btn__method">GET</span>/api/rates/euro
+                </button>
+            </div>
+
+            <div class="api-docs__body">
+
+                <!-- LEFT: Response schema -->
+                <div class="api-docs__left">
+                    <div class="responses-block">
+                        <div class="responses-block__header">
+                            <span class="responses-block__title">Respuestas</span>
+                            <span class="status-badge">200</span>
+                        </div>
+                        <p class="responses-block__desc" id="ep-desc">Devuelve el Dólar y el Euro en un mismo array.</p>
+                        <div class="content-type">
+                            Content-Type
+                            <span class="content-type__value">application/json</span>
+                        </div>
+                        <div class="schema-toggle" role="group">
+                            <button class="schema-toggle__btn" disabled>Schema</button>
+                            <button class="schema-toggle__btn active">JSON</button>
+                        </div>
+                        <!-- JSON schema panels -->
+                        <div id="schema-all" class="code-block" role="region">
+                            <span class="code-block__label">JSON</span>
+                            <span class="json-punct">[</span>
+                            <span class="json-punct">{</span>
+                            <span class="json-key">"fuente"</span><span class="json-punct">:</span> <span
+                                class="json-str">"BCV"</span><span class="json-punct">,</span>
+                            <span class="json-key">"nombre"</span><span class="json-punct">:</span> <span
+                                class="json-str">"Dólar"</span><span class="json-punct">,</span>
+                            <span class="json-key">"compra"</span><span class="json-punct">:</span> <span
+                                class="json-num">92.50</span><span class="json-punct">,</span>
+                            <span class="json-key">"venta"</span><span class="json-punct">:</span> <span
+                                class="json-num">92.50</span><span class="json-punct">,</span>
+                            <span class="json-key">"promedio"</span><span class="json-punct">:</span> <span
+                                class="json-num">92.50</span><span class="json-punct">,</span>
+                            <span class="json-key">"fechaActualizacion"</span><span class="json-punct">:</span> <span
+                                class="json-str">"2026-03-10T00:00:00-04:00"</span>
+                            <span class="json-punct">}</span><span class="json-punct">,</span>
+                            <span class="json-punct">{</span>
+                            <span class="json-key">"fuente"</span><span class="json-punct">:</span> <span
+                                class="json-str">"BCV"</span><span class="json-punct">,</span>
+                            <span class="json-key">"nombre"</span><span class="json-punct">:</span> <span
+                                class="json-str">"Euro"</span><span class="json-punct">,</span>
+                            <span class="json-key">"compra"</span><span class="json-punct">:</span> <span
+                                class="json-num">102.30</span><span class="json-punct">,</span>
+                            <span class="json-key">"venta"</span><span class="json-punct">:</span> <span
+                                class="json-num">102.30</span><span class="json-punct">,</span>
+                            <span class="json-key">"promedio"</span><span class="json-punct">:</span> <span
+                                class="json-num">102.30</span><span class="json-punct">,</span>
+                            <span class="json-key">"fechaActualizacion"</span><span class="json-punct">:</span> <span
+                                class="json-str">"2026-03-10T00:00:00-04:00"</span>
+                            <span class="json-punct">}</span>
+                            <span class="json-punct">]</span>
+                        </div>
+                        <div id="schema-dolar" class="code-block" style="display:none" role="region">
+                            <span class="code-block__label">JSON</span>
+                            <span class="json-punct">[</span>
+                            <span class="json-punct">{</span>
+                            <span class="json-key">"fuente"</span><span class="json-punct">:</span> <span
+                                class="json-str">"BCV"</span><span class="json-punct">,</span>
+                            <span class="json-key">"nombre"</span><span class="json-punct">:</span> <span
+                                class="json-str">"Dólar"</span><span class="json-punct">,</span>
+                            <span class="json-key">"compra"</span><span class="json-punct">:</span> <span
+                                class="json-num">92.50</span><span class="json-punct">,</span>
+                            <span class="json-key">"venta"</span><span class="json-punct">:</span> <span
+                                class="json-num">92.50</span><span class="json-punct">,</span>
+                            <span class="json-key">"promedio"</span><span class="json-punct">:</span> <span
+                                class="json-num">92.50</span><span class="json-punct">,</span>
+                            <span class="json-key">"fechaActualizacion"</span><span class="json-punct">:</span> <span
+                                class="json-str">"2026-03-10T00:00:00-04:00"</span>
+                            <span class="json-punct">}</span>
+                            <span class="json-punct">]</span>
+                        </div>
+                        <div id="schema-euro" class="code-block" style="display:none" role="region">
+                            <span class="code-block__label">JSON</span>
+                            <span class="json-punct">[</span>
+                            <span class="json-punct">{</span>
+                            <span class="json-key">"fuente"</span><span class="json-punct">:</span> <span
+                                class="json-str">"BCV"</span><span class="json-punct">,</span>
+                            <span class="json-key">"nombre"</span><span class="json-punct">:</span> <span
+                                class="json-str">"Euro"</span><span class="json-punct">,</span>
+                            <span class="json-key">"compra"</span><span class="json-punct">:</span> <span
+                                class="json-num">102.30</span><span class="json-punct">,</span>
+                            <span class="json-key">"venta"</span><span class="json-punct">:</span> <span
+                                class="json-num">102.30</span><span class="json-punct">,</span>
+                            <span class="json-key">"promedio"</span><span class="json-punct">:</span> <span
+                                class="json-num">102.30</span><span class="json-punct">,</span>
+                            <span class="json-key">"fechaActualizacion"</span><span class="json-punct">:</span> <span
+                                class="json-str">"2026-03-10T00:00:00-04:00"</span>
+                            <span class="json-punct">}</span>
+                            <span class="json-punct">]</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: Endpoint + Examples -->
+                <div class="api-docs__right">
+
+                    <!-- Dynamic endpoint row -->
+                    <div>
+                        <div class="endpoint-row">
+                            <span class="endpoint-row__method">GET</span>
+                            <span class="endpoint-row__url" id="ep-url">/api/<strong>rates</strong></span>
+                        </div>
+                        <br>
+                        <a id="ep-try-link" href="/api/rates" target="_blank" rel="noopener"
+                            style="text-decoration:none;">
+                            <button class="btn-try">Probar</button>
+                        </a>
+                    </div>
+
+                    <!-- Code examples -->
+                    <div class="examples-block">
+                        <p class="examples-block__title">Ejemplos</p>
+
+                        <div class="tabs" role="tablist" aria-label="Ejemplos de código">
+                            <button class="tabs__btn active" role="tab" aria-selected="true"
+                                data-tab="curl">cURL</button>
+                            <button class="tabs__btn" role="tab" aria-selected="false" data-tab="js">JavaScript</button>
+                            <button class="tabs__btn" role="tab" aria-selected="false" data-tab="php">PHP</button>
+                            <button class="tabs__btn" role="tab" aria-selected="false" data-tab="python">Python</button>
+                        </div>
+
+                        <div id="tab-curl" class="tab-panel active" role="tabpanel">
+                            <div class="code-wrapper">
+                                <button class="btn-copy" aria-label="Copiar código" data-target="code-curl" title="Copiar">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                </button>
+                                <div class="code-block--example" id="code-curl"><span class="code--var">curl</span>
+                                    https://tu-dominio.vercel.app/api/rates</div>
+                            </div>
+                        </div>
+                        <div id="tab-js" class="tab-panel" role="tabpanel">
+                            <div class="code-wrapper">
+                                <button class="btn-copy" aria-label="Copiar código" data-target="code-js" title="Copiar">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                </button>
+                                <div class="code-block--example" id="code-js"><span class="code--keyword">const</span> <span
+                                        class="code--var">res</span> = <span class="code--keyword">await</span> <span
+                                        class="code--fn">fetch</span>(<span class="code--str">'/api/rates'</span>);
+                                    <span class="code--keyword">const</span> <span class="code--var">data</span> = <span
+                                        class="code--keyword">await</span> <span class="code--var">res</span>.<span
+                                        class="code--fn">json</span>();
+                                    <span class="code--var">console</span>.<span class="code--fn">log</span>(<span
+                                        class="code--var">data</span>);
+                                </div>
+                            </div>
+                        </div>
+                        <div id="tab-php" class="tab-panel" role="tabpanel">
+                            <div class="code-wrapper">
+                                <button class="btn-copy" aria-label="Copiar código" data-target="code-php" title="Copiar">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                </button>
+                                <div class="code-block--example" id="code-php"><span class="code--var">$json</span> = <span
+                                        class="code--fn">file_get_contents</span>(<span
+                                        class="code--str">'/api/rates'</span>);
+                                    <span class="code--var">$data</span> = <span class="code--fn">json_decode</span>(<span
+                                        class="code--var">$json</span>, <span class="code--bool">true</span>);
+                                    <span class="code--fn">print_r</span>(<span class="code--var">$data</span>);
+                                </div>
+                            </div>
+                        </div>
+                        <div id="tab-python" class="tab-panel" role="tabpanel">
+                            <div class="code-wrapper">
+                                <button class="btn-copy" aria-label="Copiar código" data-target="code-python" title="Copiar">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                </button>
+                                <div class="code-block--example" id="code-python"><span class="code--keyword">import</span> requests
+    
+                                    <span class="code--var">r</span> = requests.<span class="code--fn">get</span>(<span
+                                        class="code--str">'/api/rates'</span>)
+                                    <span class="code--var">data</span> = <span class="code--var">r</span>.<span
+                                        class="code--fn">json</span>()
+                                    <span class="code--fn">print</span>(<span class="code--var">data</span>)
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>
+            Datos obtenidos directamente del
+            <a href="https://www.bcv.org.ve" target="_blank" rel="noopener">BCV</a>
+            &mdash;
+            <a href="https://github.com/JorgeEscalonas/scraping-bcv" target="_blank" rel="noopener">
+                Ver en GitHub
+            </a>
+        </p>
+    </footer>
+
+    <script src="/static/main.js"></script>
+
+</body>
+
+</html>
